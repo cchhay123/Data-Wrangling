@@ -1,0 +1,119 @@
+---
+title: "Homework_2_Analytic_Task"
+author: "Chamroeun Chhay"
+format: 
+  html: 
+    toc: true
+    toc-location: left
+    theme: cerulean
+    highlight-style: oblivion
+    self-contained: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+## Analytic Tasks
+
+The tasks below should live in a separate qmd from your prep work. You will want to `load` your data from the previous step.
+
+```{r}
+load("~/Downloads/Homework_2_code.RData")
+
+```
+
+
+1.  Which genre has the highest critic rating? Viewer rating?
+
+```{r}
+# Using the aggregate function to find the mean of average ratings in terms of genre and reviewr types. 
+# After that, I subsetted and created new data frames to only have critic reviews and viewer reviews.
+genre_agg <- aggregate(average_ratings ~ genre + reviewer_type,
+                       data = all_reviews, FUN = mean, na.action = na.pass)
+
+critics_rating <- genre_agg[genre_agg$reviewer_type == "Critic", ]
+
+viewer_rating <- genre_agg[genre_agg$reviewer_type == "Viewer", ]
+
+critics_rating$genre[which.max(critics_rating$average_ratings)]
+
+viewer_rating$genre[which.max(viewer_rating$average_ratings)]
+
+# The highest rating genre in the critic's portion is comedy, while the highest rating genre in the viewer rating in the viewer's portion is drama. 
+
+```
+
+
+2.  What is the relationship between movie length and average rating?
+
+
+```{r}
+library(ggplot2)
+
+movie_rate_length <- aggregate(cbind(total_length, average_ratings) ~ title, 
+          data = all_reviews, FUN = mean)
+
+ggplot(movie_rate_length, aes(total_length, average_ratings)) + 
+  geom_point() + geom_smooth(method = 'lm')
+
+# Using the ggplot to create a scatter plot and a trendline, we're able to see that there is not much correlation between the movie length and the average ratings. This makes sense as the length of the movie should not have much of an impact on the quality and viewer's experience. 
+
+```
+
+
+3.  What is the relationship between the date delta and average rating?
+
+```{r}
+movie_rate_date <- aggregate(cbind(date_delta, average_ratings) ~ title, 
+          data = all_reviews, FUN = mean)
+
+
+ggplot(movie_rate_date, aes(average_ratings, date_delta)) + 
+  geom_point() + geom_smooth(method = 'lm')
+
+# Using ggplot, we created a scatter plot and added trendline to find any relationship between the date delta and the average ratings. From the trendline, there seems to be a negative relationship between the two variables. It seems like the longer the date delta is, the lower the ratings would be. This makes sense as more modern viewers might have higher expectations on the quality of the movies. 
+
+```
+
+
+
+4.  What is the relationship between total number of reviews and average?
+
+```{r}
+movie_total_avg <- aggregate(cbind(total_reviews, average_ratings) ~ title, 
+          data = all_reviews, FUN = mean)
+
+ggplot(movie_total_avg, aes(average_ratings, total_reviews)) + 
+  geom_point() + geom_smooth(method = 'lm')
+
+# Also used a ggplot to create a scatter plot and add a trendline. There seems to be a positive relationship between the total number of reviews and the average ratings. The more reviews a movie has, the higher the average rating is. This can be explained as more ratings, the higher chance that there would be viewers giving them high ratings. 
+
+```
+
+
+5.  Which movie contains your word of interest at the highest frequency. Does that word have any relationship with average rating?
+
+```{r}
+
+relation_word_avg <- aggregate(experience_count ~ title, all_reviews, sum)
+
+relation_word_avg <- merge(relation_word_avg, movie_agg, by = 'title')
+
+experience_rating <- relation_word_avg[relation_word_avg$experience_count > 0, ]
+
+experience_rating[which.max(experience_rating$experience_count), ]
+
+cor(relation_word_avg$experience_count, relation_word_avg$average_ratings)
+
+lm1 <- lm(average_ratings ~ experience_count, data = experience_rating)
+
+summary(lm1)
+
+# The movie that contains the highest number of the word "experience" is Empire of Shadows with 3 times. 
+
+# Since the number of movies with the word "experience" is low, it is harder to show the relationship between the word and the average ratings. Instead, I used the linear model function to do a linear regression model to see if the word "experience" can be a predictor of the average rating. From the summary of the linear model, it shows that the intercept is significant, but the slope value is not significant. Additionally, the R-squared of the linear regression is .03215. This means that the word "experience" is not a good predictor for the average rating. 
+
+
+```
+
+

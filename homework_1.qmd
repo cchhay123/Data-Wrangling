@@ -1,0 +1,184 @@
+---
+title: "Homework #1"
+format:
+  html:
+    toc: true
+    toc-location: left
+    theme: cyborg
+    highlight-style: zenburn
+    self-contained: true
+---
+
+See all that stuff above. You should change `theme` and `highligh-style` to fit your own style. You can find them here: https://quarto.org/docs/output-formats/html-themes.html
+
+Seriously, you should start finding your own style, so definitely change them!
+
+## Data
+
+You'll be working with the following data files:
+
+-   `artist_genre.txt`
+
+-   `artist_name.csv`
+
+-   `artist_net_worth.csv`
+
+-   `artist_number_one_hits.csv`
+
+-   `artist_studio_albums.csv`
+
+-   `artist_top_hits.csv`
+
+The only file that you are going to need to be careful about is the `artist_genre` file -- be sure to look at the extension, refer to the notes on I/O, and read the help file!
+
+## Goals
+
+Read the files in and then accomplish the following goals:
+
+### Pre-join Goals
+
+-   If duplicates exist, handle them. You can either de-duplicate them (the `duplicate` function is helpful here) or `aggregate` them to single rows. The choice is yours and yours alone, but be sure to justify your decision.
+
+-   Use the aggregate function to ensure that each file only contains unique rows.
+
+```{r}
+# Read all the data so we can use the aggregate function. By using the aggregate function and the unique function, we're able to ensure that each file only contains unique rows. 
+
+# `artist_genre.txt` 
+genre <- read.table('~/Desktop/Data Wrangling/artist_genre.txt', header = T)
+summary(genre)
+u_genre <- aggregate(genre ~ Artist, data = genre, FUN = unique)
+
+# Because this data set is a .txt file, we need to use the read.table instead of read.csv. 
+
+# `artist_name.csv`
+name <- read.csv('~/Desktop/Data Wrangling/artist_name.csv')
+summary(name)
+u_name <- aggregate(Birth_Year ~ Artist, data = name, FUN = unique)
+
+# `artist_net_worth.csv`
+net_worth <- read.csv('~/Desktop/Data Wrangling/artist_net_worth.csv')
+summary(net_worth)
+net_worth$net_worth_millions <- as.numeric(gsub("\\$", "", net_worth$net_worth_millions))
+u_net <- aggregate(net_worth_millions ~ Artist, data = net_worth, FUN = unique)
+
+# For the net worth data, we need to convert the data type to numeric to represent the money value. There is also a "$" in of the row that could mess up how R use read the table. We use the gsub function to globally remove any "\\$" with an empty quotation. 
+
+# `artist_number_one_hits.csv`
+number_one_hits <- read.csv('~/Desktop/Data Wrangling/artist_number_one_hits.csv')
+summary(number_one_hits)
+u_hits <- aggregate(number_one_hits ~ artist, data = number_one_hits, FUN = unique)
+
+# `artist_studio_albums.csv`
+studio_album <- read.csv('~/Desktop/Data Wrangling/artist_studio_albums.csv')
+summary(studio_album)
+u_studio <- aggregate(studio_albums ~ Artist, data = studio_album, FUN = unique)
+
+# `artist_top_hits.csv`
+top_hits <- read.csv('~/Desktop/Data Wrangling/artist_top_hits.csv')
+summary(top_hits)
+u_top <- aggregate(cbind(Top_Hit, Year) ~ Artist, data = top_hits,  FUN = unique)
+
+```
+
+-   Which 5 artists have the greatest net worth?
+
+```{r}
+greatest_five <- u_net[order(u_net$net_worth_millions, decreasing = TRUE),]
+head(greatest_five, n = 5)
+
+# Created a function to order the net worth in a descending order and assigned it to greatest_five. Using the head function and setting n = 5 shows the five artists with the greatest net worth. 
+
+```
+
+-   Which 15 artists have the most number 1 hits?
+
+```{r}
+most_hits <- u_hits[order(u_hits$number_one_hits, decreasing = TRUE),]
+head(most_hits, n = 15)
+
+# Similar to the greatest net worth question, I used the order function to set the hit in the descending order to show the artists with the highest number 1 hits. The head fuction and the n being set to 15 shows the 15 artists with the most number 1 hits. 
+
+```
+
+-   Which 10 artists have the fewest studio albums?
+
+```{r}
+fewest_albums <- u_studio[order(u_studio$studio_albums, decreasing = FALSE),]
+head(fewest_albums, n = 10)
+View(u_studio)
+View(u_studio[u_studio$studio_albums, ])
+
+# Using similar function with the order. However, this one is set to a ascending order. Using the head function and setting n = 10, we can see the artists with the fewest studio albums. 
+
+```
+
+After you have those done, you can join your data frames together.
+
+```{r}
+
+# Using the merge function, I merged all the data sets into one data frame so I can manipulate it in future questions. 
+
+artist_info <- merge(x = u_genre, y = u_name, by = 'Artist')
+
+artist_info <- merge(x = artist_info, y = u_net, by = 'Artist')
+
+artist_info <- merge(x = artist_info, y = u_hits, by.x = 'Artist', by.y = 'artist')
+
+artist_info <- merge(x = artist_info, y = u_studio, by = 'Artist')
+
+artist_info <- merge(x = artist_info, y = u_top, by = 'Artist')
+
+artist_info[order(artist_info$net_worth_millions, decreasing = TRUE), ]
+
+
+```
+
+
+### Post-join Goals
+
+-   Create variables to capture the following ideas:
+    -   How long has the artist been around? You can just use their birth year.
+    -   Something to capture each artist's net worth per studio album.
+    
+```{r}
+
+# Assigned the current year with the functions below to show "2024"
+
+current_year <- as.integer(format(Sys.Date(), '%Y'))
+
+Sys.Date()
+
+
+# Subtracting the current year with their artists' birth year to get the age of the artists. 
+
+artist_info$career_age <- current_year - artist_info$Birth_Year
+
+# Dividing the artists' net worth millions by studio albums 
+
+artist_info$net_per_studio <- artist_info$net_worth_millions/artist_info$studio_albums
+
+
+```
+
+-   Plot net worth per studio album, the "been around" variable, and genre. There should be points and colors here.
+
+```{r}
+library(ggplot2)
+
+ggplot(data = artist_info, mapping = aes(x = career_age, y = net_per_studio, color = genre)) + geom_point() + theme_minimal() + labs(x = "Been Around", y = "Avg Revenue Per Album", color = "Genre")
+
+# Using ggplot with the artist_info to be used as the data with the career age as the x axis, the net worth per studio as the y axis, and genre as the color. We used geom_point to create a scatter plot and the labs function to rename the axis and the legend. 
+
+```
+
+
+
+For all tasks comment your code and explain what you found!
+
+
+
+
+
+
+

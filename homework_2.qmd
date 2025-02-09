@@ -1,0 +1,121 @@
+---
+title: "Homework_2_Analytic_Task"
+author: "Chamroeun Chhay"
+format: 
+  html: 
+    toc: true
+    toc-location: left
+    theme: cerulean
+    highlight-style: oblivion
+    self-contained: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+## The Data
+
+There is 1000 observations, spread across 10 csv files in a zip.
+
+1.  First you will need to use `unzip` to unzip it.
+
+2.  Next, you will need to generate a vector of all of those files with `list.files`. It works like this:
+
+```{r}
+
+file_list <- list.files("~/Desktop/Data Wrangling/data/", pattern = ".csv", all.files = TRUE, full.names = TRUE)
+
+```
+
+3.  You can use a `for loop`, an `lapply`, or a `purrr::map` statement to bring all of those files together into one data frame. The columns are in the same order, so feel free to bind them together. If you end up with a list of data frames, you can use `do.call(rbind, your_object)`, `dplyr::bind_rows`, or `data.table::rbindlist` to bring them together.
+
+## Data Prep Tasks
+```{r}
+
+# Used lapply to apply the read.csv to all the 10 csv files to read them into a set
+movie_set <- lapply(file_list, read.csv)
+
+# Used do.call to apply the rbind function to combine all the different csv files into on complete data set. 
+all_reviews <- do.call(rbind, movie_set)
+
+```
+
+This part should live in a separate qmd file.
+
+1.  Create a function to clean ratings & length variables.
+
+```{r}
+# Used a for loop and added two functions (gsub and as.numeric). gsub will remove all the words connected to the four columns and as.numeric will change the structure of the columns into numeric. 
+cleanup_num <- c("rating_first_watch", "rating_second_watch", "length_minutes", "length_hours")
+
+for (col in cleanup_num) {
+  all_reviews[, col] <- gsub("\\s*stars\\s*|\\s*hrs\\s*|\\s*mins\\s*",
+                             "", all_reviews[, col])
+  all_reviews[, col] <- as.numeric(all_reviews[, col])
+}
+
+str(all_reviews)
+
+```
+
+
+2.  Create a total length (as in movie length) column.
+
+```{r}
+
+# Combined the length in hours and lengths in minutes into mins.
+all_reviews$total_length <- all_reviews$length_hours * 60 + all_reviews$length_minutes
+
+```
+
+
+3.  Create a date delta between release time and review time.
+
+```{r}
+# Used lubridate to change the two date columns into the same value type. 
+library(lubridate)
+
+all_reviews$release_date <- lubridate:: mdy(all_reviews$release_date)
+all_reviews$review_date <- lubridate:: ymd(all_reviews$review_date)
+
+#used the difftime function to find
+all_reviews$date_delta <- difftime(all_reviews$review_date, all_reviews$release_date, units = 'days')
+
+```
+
+
+4.  Pick a word from the reviews and count how many times that word appears.
+
+```{r}
+library(stringr)
+
+# str_count counts how many times the word experience shows in each of the review
+all_reviews$experience_count <- str_count(all_reviews$review_text, "[Ee]xperience")
+
+sum(all_reviews$experience_count)
+
+```
+
+5.  Create an aggregated data set for the unique movies. There should be movies, average ratings, release year, genre, and total number of reviews.
+
+```{r}
+# create two new columns for the year the movie was released and the average ratings between the two times the reviewer watched it. 
+all_reviews$year_release <- year(all_reviews$release_date)
+
+all_reviews$average_ratings <- (all_reviews$rating_first_watch + all_reviews$rating_second_watch) / 2
+
+# aggregate the rating first watched, second watched, average_ratings and total_reviews to the movies to make them unique. 
+movie_agg <- aggregate(cbind(rating_first_watch, rating_second_watch,
+                             average_ratings, total_reviews) ~ 
+                             title + genre + year_release, data = all_reviews,
+                             FUN = mean, na.action = na.pass)
+
+```
+
+6.  You should have two data frames, so `save` those objects for the next step.
+
+```{r}
+save(all_reviews, movie_agg, file = "~/Downloads/Homework_2_code.RData")
+
+```
+
